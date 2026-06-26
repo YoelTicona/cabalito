@@ -1,0 +1,58 @@
+version: "3.9"
+
+services:
+  cabalito-postgres:
+    image: postgres:15-alpine
+    container_name: cabalito-postgres
+    environment:
+      POSTGRES_DB: cabalito_db
+      POSTGRES_USER: cabalito_user
+      POSTGRES_PASSWORD: cabalito_pass
+    volumes:
+      - ./cabalito-database:/docker-entrypoint-initdb.d
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cabalito_user -d cabalito_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cabalito-net
+
+  cabalito-backend:
+    build:
+      context: ./cabalito-backend
+      dockerfile: Dockerfile
+    container_name: cabalito-backend
+    env_file: ./cabalito-backend/.env
+    ports:
+      - "8000:8000"
+    depends_on:
+      cabalito-postgres:
+        condition: service_healthy
+    networks:
+      - cabalito-net
+    restart: unless-stopped
+
+  cabalito-frontend:
+    build:
+      context: ./cabalito-frontend
+      dockerfile: Dockerfile
+    container_name: cabalito-frontend
+    env_file: ./cabalito-frontend/.env
+    ports:
+      - "80:80"
+    depends_on:
+      - cabalito-backend
+    networks:
+      - cabalito-net
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  cabalito-net:
+    driver: bridge
