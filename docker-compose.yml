@@ -37,28 +37,6 @@ services:
       - cabalito-net
     restart: unless-stopped
 
-  cabalito-frontend:
-    build:
-      context: ./cabalito-frontend
-      dockerfile: Dockerfile.dev
-    container_name: cabalito-frontend
-    env_file: ./cabalito-frontend/.env
-    environment:
-      - NEXT_PUBLIC_API_URL=/api
-      - WATCHPACK_POLLING=true
-    volumes:
-      - ./cabalito-frontend:/app
-      - /app/node_modules
-      - /app/.next
-    command: ["npm", "run", "dev", "--", "--hostname", "0.0.0.0", "--port", "3000"]
-    ports:
-      - "3000:3000"
-    depends_on:
-      - cabalito-backend
-    networks:
-      - cabalito-net
-    restart: unless-stopped
-
 volumes:
   postgres_data:
 
