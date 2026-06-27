@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" suppressHydrationWarning>
-      <body className={`${fraunces.variable} ${inter.variable} ${mono.variable} font-sans`}>
+      <body className={`${fraunces.variable} ${inter.variable} ${mono.variable} font-sans`} suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
           {children}
         </ThemeProvider>

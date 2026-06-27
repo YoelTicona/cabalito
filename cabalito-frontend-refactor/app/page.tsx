@@ -32,6 +32,7 @@ export default function LandingPage() {
           <Image
             src="/images/logo_cabalito_claro.png"
             alt="Cabalito"
+            style={{ width: "auto", height: "auto" }}
             width={80}
             height={80}
             className="relative z-10 rounded-2xl mb-6 md:hidden"

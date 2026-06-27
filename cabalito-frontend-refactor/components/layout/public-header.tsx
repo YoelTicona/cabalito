@@ -11,6 +11,7 @@ export function PublicHeader() {
         <Image
           src="/images/logo_cabalito_claro.png"
           alt="Cabalito"
+          style={{ width: "auto", height: "auto" }}
           width={36}
           height={36}
           className="rounded-lg transition-transform group-hover:scale-105"

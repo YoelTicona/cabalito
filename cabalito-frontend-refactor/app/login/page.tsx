@@ -42,6 +42,7 @@ export default function LoginPage() {
         <Image
           src="/images/logo_cabalito_claro.png"
           alt="Cabalito"
+          style={{ width: "auto", height: "auto" }}
           width={64}
           height={64}
           className="rounded-2xl"
