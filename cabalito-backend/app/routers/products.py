@@ -9,7 +9,7 @@ from typing import List, Optional
 router = APIRouter(tags=["products"])
 
 
-# ── Público ───────────────────────────────────────────────────
+# ==== Público ====
 @router.get("/api/v1/products/radar", response_model=List[RadarProduct])
 def get_radar(db: Session = Depends(get_db)):
     products = db.query(Product).options(joinedload(Product.origin_region)).filter(Product.status == "ACTIVE").all()
@@ -39,7 +39,7 @@ def get_history(product_id: int, db: Session = Depends(get_db)):
     return history
 
 
-# ── Admin ─────────────────────────────────────────────────────
+# ==== Admin ====
 @router.get("/api/v1/admin/products", response_model=ProductPage)
 def list_products(
     search: Optional[str] = None,

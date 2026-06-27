@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   cabalito-postgres:
     image: postgres:15-alpine
@@ -28,9 +26,7 @@ services:
     container_name: cabalito-backend
     env_file: ./cabalito-backend/.env
     volumes:
-      # Monta el código local; coincide con el COPY app/ ./app/ del Dockerfile
       - ./cabalito-backend/app:/app/app
-    # Sobreescribe el CMD del Dockerfile para activar hot reload
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     ports:
       - "8000:8000"
@@ -52,8 +48,6 @@ services:
       - WATCHPACK_POLLING=true
     volumes:
       - ./cabalito-frontend:/app
-      # Volúmenes anónimos: protegen node_modules y .next (generados dentro
-      # de la imagen) de ser tapados por tu carpeta local al montarla encima
       - /app/node_modules
       - /app/.next
     command: ["npm", "run", "dev", "--", "--hostname", "0.0.0.0", "--port", "3000"]

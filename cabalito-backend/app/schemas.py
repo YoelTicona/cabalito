@@ -4,7 +4,7 @@ from datetime import date
 from decimal import Decimal
 
 
-# ── Auth ──────────────────────────────────────────────────────
+# ==== Auth ====
 class LoginRequest(BaseModel):
     username: str
     password: str
@@ -14,7 +14,7 @@ class LoginResponse(BaseModel):
     message: str
 
 
-# ── Region ────────────────────────────────────────────────────
+# ==== Region ====
 class RegionBase(BaseModel):
     name: str
     weather_api_location: Optional[str] = None
@@ -34,7 +34,7 @@ class RegionOut(RegionBase):
         from_attributes = True
 
 
-# ── EventType ─────────────────────────────────────────────────
+# ==== EventType ====
 class EventTypeBase(BaseModel):
     name: str
 
@@ -48,7 +48,7 @@ class EventTypeOut(EventTypeBase):
         from_attributes = True
 
 
-# ── Event ─────────────────────────────────────────────────────
+# ==== Event ====
 class EventBase(BaseModel):
     region_id: int
     event_type_id: int
@@ -73,7 +73,7 @@ class EventPage(BaseModel):
     items: List[EventOut]
 
 
-# ── Product ───────────────────────────────────────────────────
+# ==== Product ====
 class ProductBase(BaseModel):
     name: str
     origin_region_id: int
@@ -107,7 +107,7 @@ class RadarProduct(BaseModel):
     region_name: Optional[str]
 
 
-# ── PriceHistory ──────────────────────────────────────────────
+# ==== PriceHistory ====
 class PriceHistoryOut(BaseModel):
     id: int
     price: Decimal
@@ -118,7 +118,7 @@ class PriceHistoryOut(BaseModel):
         from_attributes = True
 
 
-# ── Reports ───────────────────────────────────────────────────
+# ==== Reports ====
 class ReportRequest(BaseModel):
     event_id: int
     reported_price: Optional[float] = None
@@ -128,7 +128,7 @@ class ForceTriggerRequest(BaseModel):
     event_id: int
 
 
-# ── Chat ──────────────────────────────────────────────────────
+# ==== Chat ====
 class ChatRequest(BaseModel):
     productId: int
     userMessage: str

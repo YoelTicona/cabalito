@@ -36,7 +36,7 @@ def _activate_event_and_reprice(event: Event, db: Session):
     db.commit()
 
 
-# ── Público ───────────────────────────────────────────────────
+# ==== Público ====
 @router.post("/api/v1/events/report")
 def report_event(body: ReportRequest, db: Session = Depends(get_db)):
     event = db.query(Event).filter(Event.id == body.event_id).first()
@@ -66,7 +66,7 @@ def report_event(body: ReportRequest, db: Session = Depends(get_db)):
     return {"status": "accepted", "event_status": event.status, "report_count": event.report_count}
 
 
-# ── Admin ─────────────────────────────────────────────────────
+# ==== Admin ====
 @router.post("/api/v1/admin/events/trigger-force")
 def force_trigger(body: ForceTriggerRequest, db: Session = Depends(get_db), _=Depends(verify_token)):
     event = db.query(Event).filter(Event.id == body.event_id).first()

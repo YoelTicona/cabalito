@@ -1,5 +1,5 @@
 -- ============================================================
--- CABALITO DATABASE SEED — La Paz, Bolivia
+--                  CABALITO DATABASE SEED
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS regions (
@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS price_history (
 );
 
 -- ============================================================
--- REGIONES — Mercados de La Paz
+--                           REGIONES
 -- ============================================================
 INSERT INTO regions (name, weather_api_location, latitude, longitude, status) VALUES
 ('Mercado Rodríguez',   'La Paz, Bolivia',  -16.4897, -68.1193, 'ACTIVE'),
@@ -56,7 +56,7 @@ INSERT INTO regions (name, weather_api_location, latitude, longitude, status) VA
 ('Zona Sur',            'La Paz, Bolivia',  -16.5400, -68.0800, 'ACTIVE');
 
 -- ============================================================
--- TIPOS DE EVENTO
+--                       TIPOS DE EVENTO
 -- ============================================================
 INSERT INTO event_types (name, status) VALUES
 ('Bloqueo de vías',  'ACTIVE'),
@@ -65,14 +65,14 @@ INSERT INTO event_types (name, status) VALUES
 ('Paro de mercado',  'ACTIVE');
 
 -- ============================================================
--- EVENTOS (semilla con 1 activo, 1 pendiente)
+--                           EVENTOS
 -- ============================================================
 INSERT INTO events (region_id, event_type_id, description, severity, report_count, status) VALUES
 (1, 1, 'Bloqueo en la avenida principal impide el ingreso de camiones con verduras al Mercado Rodríguez.', 'HIGH', 3, 'ACTIVE'),
 (2, 2, 'Posible helada reportada por agricultores de la zona norte de Feria Villa Fátima.', 'MEDIUM', 1, 'PENDING');
 
 -- ============================================================
--- PRODUCTOS BÁSICOS
+--                       PRODUCTOS BÁSICOS
 -- ============================================================
 INSERT INTO products (name, origin_region_id, current_price, market_status, status) VALUES
 ('Papa Imilla (kg)',   1, 3.50,  'RED',    'ACTIVE'),
@@ -84,8 +84,9 @@ INSERT INTO products (name, origin_region_id, current_price, market_status, stat
 ('Aceite vegetal (L)',3, 12.00, 'GREEN',  'ACTIVE');
 
 -- ============================================================
--- HISTÓRICO DE PRECIOS (últimas 4 semanas)
+--                      HISTÓRICO DE PRECIOS
 -- ============================================================
+
 -- Papa Imilla
 INSERT INTO price_history (product_id, price, recorded_date, event_id, status) VALUES
 (1, 2.50, CURRENT_DATE - INTERVAL '28 days', NULL, 'ACTIVE'),
