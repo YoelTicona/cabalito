@@ -7,7 +7,7 @@ from app.models import Event, Product, PriceHistory, Region, EventType
 from app.schemas import EventCreate, EventOut, EventPage, ReportRequest, ForceTriggerRequest
 from app.auth import verify_token
 from app import ai_service
-from typing import Optional
+from typing import List, Optional
 
 router = APIRouter(tags=["events"])
 
@@ -37,6 +37,18 @@ def _activate_event_and_reprice(event: Event, db: Session):
 
 
 # ==== Público ====
+@router.get("/api/v1/events/active", response_model=List[EventOut])
+def list_active_events(db: Session = Depends(get_db)):
+    """Lista eventos activos o pendientes de confirmación (para reportes ciudadanos)."""
+    return (
+        db.query(Event)
+        .options(joinedload(Event.region), joinedload(Event.event_type))
+        .filter(Event.status.in_(["ACTIVE", "PENDING"]))
+        .order_by(Event.id.desc())
+        .all()
+    )
+
+
 @router.post("/api/v1/events/report")
 def report_event(body: ReportRequest, db: Session = Depends(get_db)):
     event = db.query(Event).filter(Event.id == body.event_id).first()
