@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { RadarMap } from "@/components/radar/radar-map";
+import { MapHud } from "@/components/radar/map-hud";
 import { CaseraChat } from "@/components/radar/casera-chat";
 import { Sparkline } from "@/components/radar/sparkline";
 import { PublicHeader } from "@/components/layout/public-header";
@@ -65,8 +66,11 @@ export default function RadarPage() {
       <div className="flex-1 flex min-h-0">
         {/* Panel izquierdo — desktop */}
         <aside className="hidden md:flex w-72 lg:w-80 flex-col border-r border-paper/10 bg-noche-800 shrink-0">
-          <div className="p-4 border-b border-paper/10">
-            <h2 className="font-display text-lg text-paper mb-3">Productos</h2>
+          <div className="p-4 border-b border-paper/10 bg-gradient-to-b from-primary-600/10 to-transparent">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="w-2 h-2 rounded-full bg-tertiary-500 animate-pulse" />
+              <h2 className="font-display text-lg text-paper">Productos</h2>
+            </div>
             <div className="relative">
               <svg
                 className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-400 pointer-events-none"
@@ -95,8 +99,10 @@ export default function RadarPage() {
                 <button
                   onClick={() => setSelected(p)}
                   className={cn(
-                    "w-full text-left rounded-xl px-3 py-2.5 flex items-center gap-3 transition-colors",
-                    selected?.id === p.id ? "bg-paper/15" : "hover:bg-paper/5"
+                    "w-full text-left rounded-xl px-3 py-2.5 flex items-center gap-3 transition-all duration-200",
+                    selected?.id === p.id
+                      ? "bg-primary-600/20 border border-primary-600/30 shadow-[inset_0_0_12px_rgba(217,119,6,0.08)]"
+                      : "hover:bg-paper/5 border border-transparent"
                   )}
                 >
                   <span className={cn("w-2.5 h-2.5 rounded-full shrink-0", STATUS_COLORS[p.market_status])} />
@@ -114,19 +120,28 @@ export default function RadarPage() {
         </aside>
 
         {/* Mapa central */}
-        <main className="relative flex-1 min-w-0">
+        <main className="relative flex-1 min-w-0 overflow-hidden">
           <RadarMap products={products} selectedId={selected?.id ?? null} onSelect={setSelected} />
+          <MapHud products={products} crisisCount={crisisCount} />
 
           {crisisCount > 0 && (
-            <div className="absolute top-4 left-4 right-4 md:left-4 md:right-auto md:max-w-md z-10">
-              <div className="rounded-2xl bg-noche-800/80 backdrop-blur-md border border-paper/10 px-4 py-3 flex items-start gap-3">
-                <span className="text-primary-400 text-lg leading-none mt-0.5">●</span>
-                <p className="text-paper text-sm leading-snug">
-                  <span className="font-medium">
-                    {crisisCount} producto{crisisCount > 1 ? "s" : ""} en crisis:
-                  </span>{" "}
-                  {crisisNames.join(", ")}
-                </p>
+            <div className="absolute top-4 left-4 right-4 md:left-4 md:right-auto md:max-w-sm z-[3]">
+              <div className="map-hud-card px-4 py-3 flex items-start gap-3 border-primary-600/30 shadow-[0_0_24px_rgba(217,119,6,0.15)]">
+                <span className="relative flex h-3 w-3 mt-1 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-600 opacity-60" />
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-primary-600" />
+                </span>
+                <div>
+                  <p className="text-primary-400 text-[10px] uppercase tracking-[0.15em] font-semibold mb-0.5">
+                    Alerta de crisis
+                  </p>
+                  <p className="text-paper text-sm leading-snug">
+                    <span className="font-medium">
+                      {crisisCount} producto{crisisCount > 1 ? "s" : ""} en crisis
+                    </span>
+                    <span className="text-paper/50"> — {crisisNames.join(", ")}</span>
+                  </p>
+                </div>
               </div>
             </div>
           )}
@@ -135,7 +150,7 @@ export default function RadarPage() {
           <button
             onClick={() => setReportOpen(true)}
             aria-label="reportar incidente"
-            className="absolute right-4 top-4 z-10 hidden md:flex items-center gap-2 h-10 px-4 rounded-full bg-primary-600 text-white text-sm font-medium shadow-lg hover:bg-primary-800 transition-colors"
+            className="absolute right-4 top-4 z-[3] hidden md:flex items-center gap-2 h-10 px-4 rounded-full bg-primary-600 text-white text-sm font-medium shadow-lg shadow-primary-600/30 hover:bg-primary-800 hover:shadow-primary-600/40 transition-all"
           >
             📢 Reportar incidente
           </button>
@@ -175,12 +190,14 @@ export default function RadarPage() {
             </div>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-              <div className="w-16 h-16 rounded-full bg-ink/5 flex items-center justify-center text-2xl mb-4">
-                ◎
+              <div className="relative w-20 h-20 mb-5">
+                <span className="absolute inset-0 rounded-full border border-primary-600/20 animate-radarping" />
+                <span className="absolute inset-3 rounded-full border border-primary-600/40" />
+                <span className="absolute inset-0 flex items-center justify-center text-3xl text-primary-600">◎</span>
               </div>
-              <p className="font-display text-lg mb-2">Selecciona un producto</p>
-              <p className="text-ink/50 text-sm">
-                Toca un punto en el mapa o elige de la lista para ver precios y alternativas.
+              <p className="font-display text-xl mb-2">Selecciona un producto</p>
+              <p className="text-ink/50 text-sm max-w-xs">
+                Toca un punto brillante en el mapa o elige de la lista para ver precios y alternativas.
               </p>
             </div>
           )}
@@ -210,28 +227,44 @@ function ProductDetail({
   onClose: () => void;
   onCasera: () => void;
 }) {
+  const statusLabel =
+    selected.market_status === "RED" ? "crisis" : selected.market_status === "YELLOW" ? "alerta" : "normal";
+  const statusClass =
+    selected.market_status === "RED"
+      ? "bg-primary-100 text-primary-800 border-primary-200"
+      : selected.market_status === "YELLOW"
+      ? "bg-primary-50 text-primary-700 border-primary-200"
+      : "bg-tertiary-50 text-tertiary-800 border-tertiary-200";
+
   return (
     <>
-      <div className="flex items-center justify-between mb-1">
-        <p className="text-ink/60 text-xs">{selected.region_name ?? "La Paz"}</p>
-        <button onClick={onClose} aria-label="cerrar" className="text-ink/40 text-lg leading-none hover:text-ink/70">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span className={cn("text-[10px] uppercase tracking-wider font-semibold px-2.5 py-1 rounded-full border", statusClass)}>
+            {statusLabel}
+          </span>
+          <p className="text-ink/50 text-xs">{selected.region_name ?? "La Paz"}</p>
+        </div>
+        <button onClick={onClose} aria-label="cerrar" className="w-8 h-8 rounded-full hover:bg-ink/5 flex items-center justify-center text-ink/40 text-lg">
           ×
         </button>
       </div>
-      <h2 className="font-display text-xl text-ink mb-1">{selected.name}</h2>
+      <h2 className="font-display text-2xl text-ink mb-1">{selected.name}</h2>
       <p
         className={cn(
-          "text-3xl font-display",
+          "text-4xl font-display tracking-tight",
           selected.market_status === "RED"
             ? "text-primary-600"
             : selected.market_status === "YELLOW"
-            ? "text-primary-400"
+            ? "text-primary-500"
             : "text-tertiary-600"
         )}
       >
         Bs {formatBs(selected.current_price)}
       </p>
-      <div className="mt-3">
+      <p className="text-ink/40 text-xs mt-1 mb-4">precio actual en el mercado</p>
+      <div className="rounded-xl bg-ink/[0.03] border border-ink/5 p-3">
+        <p className="text-[10px] uppercase tracking-wider text-ink/40 font-medium mb-2">Historial de precios</p>
         <Sparkline data={history} />
       </div>
       <Button onClick={onCasera} className="w-full mt-4" size="md">

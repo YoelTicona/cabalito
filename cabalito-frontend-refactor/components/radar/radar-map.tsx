@@ -14,10 +14,58 @@ const COLORS: Record<string, string> = {
   RED: "#D97706",
 };
 
+const GLOW: Record<string, string> = {
+  GREEN: "rgba(5, 150, 105, 0.55)",
+  YELLOW: "rgba(245, 158, 11, 0.55)",
+  RED: "rgba(217, 119, 6, 0.7)",
+};
+
 interface Props {
   products: RadarProduct[];
   selectedId: number | null;
   onSelect: (p: RadarProduct) => void;
+}
+
+function createMarkerElement(p: RadarProduct, isSelected: boolean): HTMLDivElement {
+  const color = COLORS[p.market_status] ?? COLORS.GREEN;
+  const glow = GLOW[p.market_status] ?? GLOW.GREEN;
+  const isCrisis = p.market_status === "RED";
+  const isAlert = p.market_status === "YELLOW";
+
+  const wrap = document.createElement("div");
+  wrap.className = "map-marker";
+  wrap.style.setProperty("--marker-color", color);
+  wrap.style.setProperty("--marker-glow", glow);
+
+  if (isCrisis) {
+    const pulse = document.createElement("span");
+    pulse.className = "map-marker-pulse";
+    wrap.appendChild(pulse);
+    const pulse2 = document.createElement("span");
+    pulse2.className = "map-marker-pulse map-marker-pulse-delay";
+    wrap.appendChild(pulse2);
+  }
+
+  const halo = document.createElement("span");
+  halo.className = "map-marker-halo";
+  wrap.appendChild(halo);
+
+  const dot = document.createElement("span");
+  dot.className = "map-marker-dot";
+  if (isSelected) dot.classList.add("map-marker-dot-selected");
+  if (isAlert) dot.classList.add("map-marker-dot-alert");
+  wrap.appendChild(dot);
+
+  const chip = document.createElement("div");
+  chip.className = "map-marker-chip";
+  if (isSelected) chip.classList.add("map-marker-chip-visible");
+  chip.innerHTML = `
+    <span class="map-marker-chip-name">${p.name}</span>
+    <span class="map-marker-chip-price">Bs ${parseFloat(p.current_price).toFixed(2)}</span>
+  `;
+  wrap.appendChild(chip);
+
+  return wrap;
 }
 
 export function RadarMap({ products, selectedId, onSelect }: Props) {
@@ -32,14 +80,33 @@ export function RadarMap({ products, selectedId, onSelect }: Props) {
       container: containerRef.current,
       style: DARK_STYLE,
       center: LA_PAZ_CENTER,
-      zoom: 12.2,
+      zoom: 12.4,
+      pitch: 42,
+      bearing: -12,
       attributionControl: false,
     });
     mapRef.current = map;
 
-    // el contenedor a veces no tiene su tamano final en el primer frame
-    // (pasa seguido con 100dvh), asi que forzamos resize varias veces
-    map.on("load", () => map.resize());
+    map.addControl(
+      new maplibregl.NavigationControl({ showCompass: false }),
+      "bottom-right"
+    );
+
+    map.on("load", () => {
+      map.resize();
+      // Tinte sutil al mapa base con la paleta Cabalito
+      try {
+        if (map.getLayer("background")) {
+          map.setPaintProperty("background", "background-color", "#0d1117");
+        }
+        if (map.getLayer("water")) {
+          map.setPaintProperty("water", "fill-color", "#111827");
+        }
+      } catch {
+        // capas varían según el estilo base
+      }
+    });
+
     requestAnimationFrame(() => map.resize());
 
     const resizeObserver = new ResizeObserver(() => map.resize());
@@ -58,6 +125,22 @@ export function RadarMap({ products, selectedId, onSelect }: Props) {
     };
   }, []);
 
+  // Fly-to al seleccionar desde sidebar
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !selectedId) return;
+    const p = products.find((x) => x.id === selectedId);
+    if (p?.latitude == null || p?.longitude == null) return;
+    map.flyTo({
+      center: [p.longitude, p.latitude],
+      zoom: 14,
+      pitch: 48,
+      bearing: -8,
+      speed: 1.4,
+      essential: true,
+    });
+  }, [selectedId, products]);
+
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -69,34 +152,11 @@ export function RadarMap({ products, selectedId, onSelect }: Props) {
       .filter((p) => p.latitude != null && p.longitude != null)
       .forEach((p) => {
         const isSelected = p.id === selectedId;
-        const isCrisis = p.market_status === "RED";
-        const color = COLORS[p.market_status] ?? COLORS.GREEN;
-
-        const el = document.createElement("div");
-        el.style.position = "relative";
-        el.style.width = isSelected ? "26px" : "18px";
-        el.style.height = isSelected ? "26px" : "18px";
-        el.style.cursor = "pointer";
-
-        if (isCrisis) {
-          const ping = document.createElement("span");
-          ping.className = "animate-radarping";
-          ping.style.position = "absolute";
-          ping.style.inset = "0";
-          ping.style.borderRadius = "50%";
-          ping.style.background = color;
-          el.appendChild(ping);
-        }
-
-        const dot = document.createElement("span");
-        dot.style.position = "absolute";
-        dot.style.inset = "0";
-        dot.style.borderRadius = "50%";
-        dot.style.background = color;
-        dot.style.border = isSelected ? "2px solid #F3F4F6" : "1.5px solid rgba(17,24,39,0.6)";
-        el.appendChild(dot);
-
-        el.addEventListener("click", () => onSelect(p));
+        const el = createMarkerElement(p, isSelected);
+        el.addEventListener("click", (e) => {
+          e.stopPropagation();
+          onSelect(p);
+        });
 
         const marker = new maplibregl.Marker({ element: el, anchor: "center" })
           .setLngLat([p.longitude as number, p.latitude as number])
@@ -106,5 +166,5 @@ export function RadarMap({ products, selectedId, onSelect }: Props) {
       });
   }, [products, selectedId, onSelect]);
 
-  return <div ref={containerRef} className="absolute inset-0 w-full h-full" />;
+  return <div ref={containerRef} className="absolute inset-0 w-full h-full map-container" />;
 }
