@@ -10,9 +10,15 @@ import { MobileNav } from "@/components/layout/mobile-nav";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select } from "@/components/ui/input";
-import { getActiveEvents, getProductHistory, getRadar, reportEvent } from "@/lib/api";
+import {
+  getActiveEvents,
+  getMarketProductHistory,
+  getRadar,
+  getPublicRegions,
+  reportEvent,
+} from "@/lib/api";
 import { cn, formatBs } from "@/lib/utils";
-import type { EventOut, PriceHistoryOut, RadarProduct } from "@/lib/types";
+import type { EventOut, PriceHistoryOut, RadarProduct, RegionOut } from "@/lib/types";
 
 const STATUS_COLORS: Record<string, string> = {
   GREEN: "bg-tertiary-600",
@@ -35,19 +41,23 @@ export default function RadarPage() {
 
   useEffect(() => {
     if (!selected) return;
-    getProductHistory(selected.id).then(setHistory).catch(() => setHistory([]));
+    getMarketProductHistory(selected.market_product_id).then(setHistory).catch(() => setHistory([]));
   }, [selected]);
 
   const crisisCount = useMemo(() => products.filter((p) => p.market_status === "RED").length, [products]);
   const crisisNames = useMemo(
-    () => products.filter((p) => p.market_status === "RED").slice(0, 3).map((p) => p.name),
+    () => products.filter((p) => p.market_status === "RED").slice(0, 3).map((p) => p.product_name),
     [products]
   );
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return products;
-    return products.filter((p) => p.name.toLowerCase().includes(q));
+    return products.filter(
+      (p) =>
+        p.product_name.toLowerCase().includes(q) ||
+        (p.region_name ?? "").toLowerCase().includes(q)
+    );
   }, [products, search]);
 
   function openCasera() {
@@ -88,27 +98,27 @@ export default function RadarPage() {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar producto..."
+                placeholder="Buscar producto o mercado..."
                 className="w-full h-10 rounded-full bg-paper/10 border border-paper/10 pl-10 pr-4 text-sm text-paper placeholder:text-paper/40 outline-none focus:border-primary-600 focus:ring-2 focus:ring-primary-600/30"
               />
             </div>
           </div>
           <ul className="flex-1 overflow-y-auto p-2 space-y-1">
             {filtered.map((p) => (
-              <li key={p.id}>
+              <li key={p.market_product_id}>
                 <button
                   onClick={() => setSelected(p)}
                   className={cn(
                     "w-full text-left rounded-xl px-3 py-2.5 flex items-center gap-3 transition-all duration-200",
-                    selected?.id === p.id
+                    selected?.market_product_id === p.market_product_id
                       ? "bg-primary-600/20 border border-primary-600/30 shadow-[inset_0_0_12px_rgba(217,119,6,0.08)]"
                       : "hover:bg-paper/5 border border-transparent"
                   )}
                 >
                   <span className={cn("w-2.5 h-2.5 rounded-full shrink-0", STATUS_COLORS[p.market_status])} />
                   <div className="min-w-0 flex-1">
-                    <p className="text-paper text-sm font-medium truncate">{p.name}</p>
-                    <p className="text-paper/40 text-xs">Bs {formatBs(p.current_price)}</p>
+                    <p className="text-paper text-sm font-medium truncate">{p.product_name}</p>
+                    <p className="text-paper/40 text-xs truncate">{p.region_name} · Bs {formatBs(p.current_price)}</p>
                   </div>
                 </button>
               </li>
@@ -121,7 +131,11 @@ export default function RadarPage() {
 
         {/* Mapa central */}
         <main className="relative flex-1 min-w-0 overflow-hidden">
-          <RadarMap products={products} selectedId={selected?.id ?? null} onSelect={setSelected} />
+          <RadarMap
+            products={products}
+            selectedId={selected?.market_product_id ?? null}
+            onSelect={setSelected}
+          />
           <MapHud products={products} crisisCount={crisisCount} />
 
           {crisisCount > 0 && (
@@ -146,7 +160,7 @@ export default function RadarPage() {
             </div>
           )}
 
-          {/* Botón reportar — desktop en header del mapa */}
+          {/* Botón reportar — desktop */}
           <button
             onClick={() => setReportOpen(true)}
             aria-label="reportar incidente"
@@ -206,12 +220,16 @@ export default function RadarPage() {
 
       <CaseraChat
         open={chatOpen}
-        productId={selected?.id ?? null}
-        productName={selected?.name ?? ""}
+        productId={selected?.product_id ?? null}
+        productName={selected?.product_name ?? ""}
         onClose={() => setChatOpen(false)}
       />
 
-      <ReportModal open={reportOpen} onClose={() => setReportOpen(false)} products={products} />
+      <ReportModal
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        products={products}
+      />
     </div>
   );
 }
@@ -249,7 +267,8 @@ function ProductDetail({
           ×
         </button>
       </div>
-      <h2 className="font-display text-2xl text-ink mb-1">{selected.name}</h2>
+      <h2 className="font-display text-2xl text-ink mb-0.5">{selected.product_name}</h2>
+      <p className="text-ink/40 text-xs mb-2">{selected.unit} · {selected.region_name}</p>
       <p
         className={cn(
           "text-4xl font-display tracking-tight",
@@ -262,7 +281,7 @@ function ProductDetail({
       >
         Bs {formatBs(selected.current_price)}
       </p>
-      <p className="text-ink/40 text-xs mt-1 mb-4">precio actual en el mercado</p>
+      <p className="text-ink/40 text-xs mt-1 mb-4">precio actual en este mercado</p>
       <div className="rounded-xl bg-ink/[0.03] border border-ink/5 p-3">
         <p className="text-[10px] uppercase tracking-wider text-ink/40 font-medium mb-2">Historial de precios</p>
         <Sparkline data={history} />
@@ -284,21 +303,45 @@ function ReportModal({
   products: RadarProduct[];
 }) {
   const [events, setEvents] = useState<EventOut[]>([]);
+  const [regions, setRegions] = useState<RegionOut[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
+
+  // Campos del formulario
   const [eventId, setEventId] = useState("");
-  const [productId, setProductId] = useState("");
+  const [regionId, setRegionId] = useState("");
+  const [marketProductId, setMarketProductId] = useState("");
   const [price, setPrice] = useState("");
+  const [unit, setUnit] = useState("kg");
+  const [placeRef, setPlaceRef] = useState("");
+  const [description, setDescription] = useState("");
+
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
     setLoadingEvents(true);
-    getActiveEvents()
-      .then(setEvents)
-      .catch(() => setEvents([]))
+    Promise.all([getActiveEvents(), getPublicRegions()])
+      .then(([evts, regs]) => {
+        setEvents(evts);
+        setRegions(regs);
+      })
+      .catch(() => {})
       .finally(() => setLoadingEvents(false));
   }, [open]);
+
+  // Autocompletar región al seleccionar evento
+  useEffect(() => {
+    if (!eventId) return;
+    const ev = events.find((e) => String(e.id) === eventId);
+    if (ev?.region_id) setRegionId(String(ev.region_id));
+  }, [eventId, events]);
+
+  // Filtrar market_products según región seleccionada
+  const filteredProducts = useMemo(() => {
+    if (!regionId) return products;
+    return products.filter((p) => String(p.region_id) === regionId);
+  }, [products, regionId]);
 
   function eventLabel(e: EventOut) {
     const region = e.region?.name ?? `Region ${e.region_id}`;
@@ -307,25 +350,38 @@ function ReportModal({
     return `${tipo} · ${region}${desc}`;
   }
 
+  function reset() {
+    setEventId("");
+    setRegionId("");
+    setMarketProductId("");
+    setPrice("");
+    setUnit("kg");
+    setPlaceRef("");
+    setDescription("");
+    setError(null);
+  }
+
   async function submit() {
     setError(null);
-    if (!eventId) {
-      setError("Selecciona la alerta que quieres confirmar.");
+    if (!eventId && !regionId && !marketProductId) {
+      setError("Selecciona una alerta, un mercado o un producto.");
       return;
     }
     try {
       await reportEvent({
-        event_id: parseInt(eventId, 10),
-        product_id: productId ? parseInt(productId, 10) : undefined,
-        reported_price: price ? parseFloat(price) : undefined,
+        event_id: eventId ? parseInt(eventId, 10) : null,
+        region_id: regionId ? parseInt(regionId, 10) : null,
+        market_product_id: marketProductId ? parseInt(marketProductId, 10) : null,
+        reported_price: price ? parseFloat(price) : null,
+        reported_unit: unit || null,
+        market_place_reference: placeRef || null,
+        description: description || null,
       });
       setSent(true);
       setTimeout(() => {
         setSent(false);
         onClose();
-        setEventId("");
-        setProductId("");
-        setPrice("");
+        reset();
       }, 1400);
     } catch {
       setError("No se pudo enviar el reporte, intenta de nuevo.");
@@ -333,22 +389,19 @@ function ReportModal({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Reportar incidente">
+    <Modal open={open} onClose={() => { onClose(); reset(); }} title="Reportar incidente">
       {sent ? (
         <p className="text-tertiary-600 text-sm">Gracias por confirmar, caserito. Tu reporte ayuda a otros.</p>
       ) : (
         <>
           <p className="text-ink/60 text-sm mb-4">
-            Confirma una alerta activa que viste en el mercado. Elige el evento de la lista.
+            Reporta una situación en el mercado. Puedes confirmar una alerta activa o hacer un reporte libre.
           </p>
-          <Field label="Alerta activa">
-            <Select
-              value={eventId}
-              onChange={(e) => setEventId(e.target.value)}
-              disabled={loadingEvents}
-            >
+
+          <Field label="Alerta activa (opcional)">
+            <Select value={eventId} onChange={(e) => setEventId(e.target.value)} disabled={loadingEvents}>
               <option value="">
-                {loadingEvents ? "Cargando eventos..." : "selecciona una alerta..."}
+                {loadingEvents ? "Cargando alertas..." : "ninguna / reporte libre"}
               </option>
               {events.map((e) => (
                 <option key={e.id} value={e.id}>
@@ -357,24 +410,61 @@ function ReportModal({
               ))}
             </Select>
           </Field>
-          {events.length === 0 && !loadingEvents && (
-            <p className="text-ink/40 text-xs mb-4">No hay alertas activas en este momento.</p>
-          )}
-          <Field label="Producto (opcional)">
-            <Select value={productId} onChange={(e) => setProductId(e.target.value)}>
-              <option value="">selecciona...</option>
-              {products.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
+
+          <Field label="Mercado o zona">
+            <Select value={regionId} onChange={(e) => { setRegionId(e.target.value); setMarketProductId(""); }}>
+              <option value="">selecciona un mercado...</option>
+              {regions.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
                 </option>
               ))}
             </Select>
           </Field>
-          <Field label="Precio que viste (opcional)">
-            <Input value={price} onChange={(e) => setPrice(e.target.value)} type="number" placeholder="ej. 9.50" />
+
+          <Field label="Producto (opcional)">
+            <Select value={marketProductId} onChange={(e) => setMarketProductId(e.target.value)}>
+              <option value="">selecciona un producto...</option>
+              {filteredProducts.map((p) => (
+                <option key={p.market_product_id} value={p.market_product_id}>
+                  {p.product_name} ({p.unit})
+                </option>
+              ))}
+            </Select>
           </Field>
+
+          <div className="flex gap-3">
+            <Field label="Precio que viste (Bs)" className="flex-1">
+              <Input value={price} onChange={(e) => setPrice(e.target.value)} type="number" placeholder="ej. 4.20" />
+            </Field>
+            <Field label="Unidad" className="w-28">
+              <Select value={unit} onChange={(e) => setUnit(e.target.value)}>
+                <option value="kg">kg</option>
+                <option value="L">L</option>
+                <option value="unidad">unidad</option>
+                <option value="arroba">arroba</option>
+              </Select>
+            </Field>
+          </div>
+
+          <Field label="Lugar específico (opcional)">
+            <Input
+              value={placeRef}
+              onChange={(e) => setPlaceRef(e.target.value)}
+              placeholder="ej. Puesto 12, pasillo de verduras"
+            />
+          </Field>
+
+          <Field label="Comentario adicional (opcional)">
+            <Input
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="ej. El precio subió desde esta mañana"
+            />
+          </Field>
+
           {error && <p className="text-primary-600 text-sm mb-3">{error}</p>}
-          <Button onClick={submit} className="w-full" disabled={events.length === 0 && !loadingEvents}>
+          <Button onClick={submit} className="w-full">
             Enviar reporte
           </Button>
         </>

@@ -4,9 +4,9 @@ import { cn } from "@/lib/utils";
 const base =
   "w-full h-10 rounded-full border border-primary-100 dark:border-paper/15 bg-white dark:bg-ink/40 px-4 text-sm text-ink dark:text-paper placeholder:text-ink/40 dark:placeholder:text-paper/40 focus:border-primary-600 focus:ring-2 focus:ring-primary-600/20 outline-none transition-all";
 
-export function Field({ label, children }: { label: string; children: ReactNode }) {
+export function Field({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
   return (
-    <label className="block mb-4">
+    <label className={cn("block mb-4", className)}>
       <span className="block mb-1.5 text-xs font-medium text-ink/60 dark:text-paper/60">{label}</span>
       {children}
     </label>

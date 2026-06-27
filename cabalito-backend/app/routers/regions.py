@@ -6,10 +6,16 @@ from app.schemas import RegionCreate, RegionUpdate, RegionOut
 from app.auth import verify_token
 from typing import List, Optional
 
-router = APIRouter(prefix="/api/v1/admin/regions", tags=["regions"])
+router = APIRouter(tags=["regions"])
 
 
-@router.get("", response_model=List[RegionOut])
+# Endpoint público para el modal de reportes ciudadanos
+@router.get("/api/v1/regions", response_model=List[RegionOut])
+def list_regions_public(db: Session = Depends(get_db)):
+    return db.query(Region).filter(Region.status == "ACTIVE").order_by(Region.name).all()
+
+
+@router.get("/api/v1/admin/regions", response_model=List[RegionOut])
 def list_regions(search: Optional[str] = None, db: Session = Depends(get_db), _=Depends(verify_token)):
     q = db.query(Region)
     if search:
@@ -17,7 +23,7 @@ def list_regions(search: Optional[str] = None, db: Session = Depends(get_db), _=
     return q.all()
 
 
-@router.post("", response_model=RegionOut, status_code=201)
+@router.post("/api/v1/admin/regions", response_model=RegionOut, status_code=201)
 def create_region(body: RegionCreate, db: Session = Depends(get_db), _=Depends(verify_token)):
     region = Region(**body.model_dump())
     db.add(region)
@@ -26,7 +32,7 @@ def create_region(body: RegionCreate, db: Session = Depends(get_db), _=Depends(v
     return region
 
 
-@router.put("/{region_id}", response_model=RegionOut)
+@router.put("/api/v1/admin/regions/{region_id}", response_model=RegionOut)
 def update_region(region_id: int, body: RegionUpdate, db: Session = Depends(get_db), _=Depends(verify_token)):
     region = db.query(Region).filter(Region.id == region_id).first()
     if not region:
@@ -38,7 +44,7 @@ def update_region(region_id: int, body: RegionUpdate, db: Session = Depends(get_
     return region
 
 
-@router.patch("/{region_id}/status", response_model=RegionOut)
+@router.patch("/api/v1/admin/regions/{region_id}/status", response_model=RegionOut)
 def patch_region_status(region_id: int, db: Session = Depends(get_db), _=Depends(verify_token)):
     region = db.query(Region).filter(Region.id == region_id).first()
     if not region:

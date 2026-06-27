@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import Product
+from app.models import Product, MarketProduct
 from app.schemas import ChatRequest, ChatResponse
 from app import ai_service
 
@@ -14,11 +14,13 @@ def casera_chat(body: ChatRequest, db: Session = Depends(get_db)):
     if not product:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
 
-    green_products = db.query(Product).filter(
-        Product.market_status == "GREEN",
-        Product.status == "ACTIVE"
-    ).all()
-    green_names = [p.name for p in green_products]
+    green_mps = (
+        db.query(MarketProduct)
+        .join(MarketProduct.product)
+        .filter(MarketProduct.market_status == "GREEN", MarketProduct.status == "ACTIVE")
+        .all()
+    )
+    green_names = list({mp.product.name for mp in green_mps if mp.product})
 
     reply = ai_service.casera_chat(
         user_message=body.userMessage,

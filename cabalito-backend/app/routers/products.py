@@ -1,8 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
-from app.models import Product, PriceHistory, Region
-from app.schemas import ProductCreate, ProductUpdate, ProductOut, ProductPage, RadarProduct, PriceHistoryOut
+from app.models import Product, MarketProduct, PriceHistory
+from app.schemas import (
+    ProductCreate, ProductUpdate, ProductOut, ProductPage,
+    RadarProduct, PriceHistoryOut,
+)
 from app.auth import verify_token
 from typing import List, Optional
 
@@ -12,34 +15,101 @@ router = APIRouter(tags=["products"])
 # ==== Público ====
 @router.get("/api/v1/products/radar", response_model=List[RadarProduct])
 def get_radar(db: Session = Depends(get_db)):
-    products = db.query(Product).options(joinedload(Product.origin_region)).filter(Product.status == "ACTIVE").all()
+    mps = (
+        db.query(MarketProduct)
+        .options(joinedload(MarketProduct.product), joinedload(MarketProduct.region))
+        .filter(MarketProduct.status == "ACTIVE")
+        .all()
+    )
     result = []
-    for p in products:
+    for mp in mps:
         result.append(RadarProduct(
-            id=p.id,
-            name=p.name,
-            current_price=p.current_price,
-            market_status=p.market_status,
-            latitude=p.origin_region.latitude if p.origin_region else None,
-            longitude=p.origin_region.longitude if p.origin_region else None,
-            region_name=p.origin_region.name if p.origin_region else None,
+            market_product_id=mp.id,
+            product_id=mp.product_id,
+            product_name=mp.product.name if mp.product else "",
+            unit=mp.product.unit if mp.product else "kg",
+            region_id=mp.region_id,
+            region_name=mp.region.name if mp.region else None,
+            latitude=mp.region.latitude if mp.region else None,
+            longitude=mp.region.longitude if mp.region else None,
+            current_price=mp.current_price,
+            market_status=mp.market_status,
+            status=mp.status,
+            last_updated=mp.last_updated,
         ))
     return result
 
 
+@router.get("/api/v1/market-products/{market_product_id}/history", response_model=List[PriceHistoryOut])
+def get_market_product_history(market_product_id: int, db: Session = Depends(get_db)):
+    mp = db.query(MarketProduct).filter(MarketProduct.id == market_product_id).first()
+    if not mp:
+        raise HTTPException(status_code=404, detail="Producto de mercado no encontrado")
+    history = (
+        db.query(PriceHistory)
+        .options(joinedload(PriceHistory.event))
+        .filter(
+            PriceHistory.market_product_id == market_product_id,
+            PriceHistory.status == "ACTIVE",
+        )
+        .order_by(PriceHistory.recorded_date.asc())
+        .all()
+    )
+    result = []
+    for h in history:
+        result.append(PriceHistoryOut(
+            id=h.id,
+            market_product_id=h.market_product_id,
+            price=h.price,
+            recorded_date=h.recorded_date,
+            event_id=h.event_id,
+            event_description=h.event.description if h.event else None,
+            status=h.status,
+        ))
+    return result
+
+
+# Compatibilidad: historial por product_id + region_id opcional
 @router.get("/api/v1/products/{product_id}/history", response_model=List[PriceHistoryOut])
-def get_history(product_id: int, db: Session = Depends(get_db)):
-    product = db.query(Product).filter(Product.id == product_id).first()
-    if not product:
-        raise HTTPException(status_code=404, detail="Producto no encontrado")
-    history = db.query(PriceHistory).filter(
-        PriceHistory.product_id == product_id,
-        PriceHistory.status == "ACTIVE"
-    ).order_by(PriceHistory.recorded_date.asc()).all()
-    return history
+def get_product_history_compat(
+    product_id: int,
+    region_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+):
+    q = (
+        db.query(MarketProduct)
+        .filter(MarketProduct.product_id == product_id, MarketProduct.status == "ACTIVE")
+    )
+    if region_id:
+        q = q.filter(MarketProduct.region_id == region_id)
+    mp = q.first()
+    if not mp:
+        raise HTTPException(status_code=404, detail="Producto no encontrado en mercado")
+    history = (
+        db.query(PriceHistory)
+        .options(joinedload(PriceHistory.event))
+        .filter(
+            PriceHistory.market_product_id == mp.id,
+            PriceHistory.status == "ACTIVE",
+        )
+        .order_by(PriceHistory.recorded_date.asc())
+        .all()
+    )
+    result = []
+    for h in history:
+        result.append(PriceHistoryOut(
+            id=h.id,
+            market_product_id=h.market_product_id,
+            price=h.price,
+            recorded_date=h.recorded_date,
+            event_id=h.event_id,
+            event_description=h.event.description if h.event else None,
+            status=h.status,
+        ))
+    return result
 
 
-# ==== Admin ====
+# ==== Admin: Productos (catálogo) ====
 @router.get("/api/v1/admin/products", response_model=ProductPage)
 def list_products(
     search: Optional[str] = None,
@@ -49,7 +119,7 @@ def list_products(
     db: Session = Depends(get_db),
     _=Depends(verify_token),
 ):
-    q = db.query(Product).options(joinedload(Product.origin_region))
+    q = db.query(Product)
     if search:
         q = q.filter(Product.name.ilike(f"%{search}%"))
     if status:

@@ -3,7 +3,7 @@ from datetime import date
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
-from app.models import Event, Product, PriceHistory, Region, EventType
+from app.models import Event, MarketProduct, PriceHistory, Region, EventType, CitizenReport
 from app.schemas import EventCreate, EventOut, EventPage, ReportRequest, ForceTriggerRequest
 from app.auth import verify_token
 from app import ai_service
@@ -12,6 +12,7 @@ from typing import List, Optional
 router = APIRouter(tags=["events"])
 
 PRICE_COEFFICIENTS = {"LOW": 1.05, "MEDIUM": 1.12, "HIGH": 1.20}
+STATUS_BY_SEVERITY = {"LOW": "YELLOW", "MEDIUM": "YELLOW", "HIGH": "RED"}
 
 
 def _activate_event_and_reprice(event: Event, db: Session):
@@ -21,25 +22,38 @@ def _activate_event_and_reprice(event: Event, db: Session):
     region_name = region.name if region else "La Paz"
     etype_name = etype.name if etype else "Evento"
     event.ai_explanation = ai_service.explain_event(event.description or "", region_name, etype_name)
+
     coeff = PRICE_COEFFICIENTS.get(event.severity, 1.10)
-    products = db.query(Product).filter(Product.status == "ACTIVE").all()
-    for p in products:
+    new_status = STATUS_BY_SEVERITY.get(event.severity, "YELLOW")
+
+    market_products = (
+        db.query(MarketProduct)
+        .filter(
+            MarketProduct.region_id == event.region_id,
+            MarketProduct.status == "ACTIVE",
+        )
+        .all()
+    )
+
+    for mp in market_products:
         noise = 1 + (random.random() * 0.06 - 0.03)
-        new_price = float(p.current_price) * coeff * noise
-        p.current_price = round(new_price, 2)
-        if coeff >= 1.20:
-            p.market_status = "RED"
-        elif coeff >= 1.10:
-            p.market_status = "YELLOW"
-        ph = PriceHistory(product_id=p.id, price=p.current_price, recorded_date=date.today(), event_id=event.id)
+        new_price = round(float(mp.current_price) * coeff * noise, 2)
+        mp.current_price = new_price
+        mp.market_status = new_status
+        ph = PriceHistory(
+            market_product_id=mp.id,
+            price=new_price,
+            recorded_date=date.today(),
+            event_id=event.id,
+        )
         db.add(ph)
+
     db.commit()
 
 
 # ==== Público ====
 @router.get("/api/v1/events/active", response_model=List[EventOut])
 def list_active_events(db: Session = Depends(get_db)):
-    """Lista eventos activos o pendientes de confirmación (para reportes ciudadanos)."""
     return (
         db.query(Event)
         .options(joinedload(Event.region), joinedload(Event.event_type))
@@ -51,31 +65,80 @@ def list_active_events(db: Session = Depends(get_db)):
 
 @router.post("/api/v1/events/report")
 def report_event(body: ReportRequest, db: Session = Depends(get_db)):
-    event = db.query(Event).filter(Event.id == body.event_id).first()
-    if not event:
-        raise HTTPException(status_code=404, detail="Evento no encontrado")
+    if not body.event_id and not body.region_id and not body.market_product_id:
+        raise HTTPException(status_code=422, detail="Debe proveer event_id, region_id o market_product_id")
 
-    if body.reported_price and body.product_id:
-        product = db.query(Product).filter(Product.id == body.product_id).first()
-        if product:
+    event = None
+    if body.event_id:
+        event = db.query(Event).filter(Event.id == body.event_id).first()
+        if not event:
+            raise HTTPException(status_code=404, detail="Evento no encontrado")
+
+    # Validar precio si se provee junto a un market_product
+    if body.reported_price and body.market_product_id:
+        mp = db.query(MarketProduct).filter(MarketProduct.id == body.market_product_id).first()
+        if mp:
             history = db.query(PriceHistory).filter(
-                PriceHistory.product_id == body.product_id,
-                PriceHistory.status == "ACTIVE"
+                PriceHistory.market_product_id == body.market_product_id,
+                PriceHistory.status == "ACTIVE",
             ).all()
             if history:
                 avg = sum(float(h.price) for h in history) / len(history)
                 result = ai_service.validate_price(body.reported_price, avg)
                 if result == "INVALID":
-                    return {"status": "rejected", "reason": "Precio reportado inválido según IA"}
+                    citizen_report = CitizenReport(
+                        event_id=body.event_id,
+                        region_id=body.region_id,
+                        market_product_id=body.market_product_id,
+                        reported_price=body.reported_price,
+                        reported_unit=body.reported_unit,
+                        market_place_reference=body.market_place_reference,
+                        description=body.description,
+                        latitude=body.latitude,
+                        longitude=body.longitude,
+                        status="REJECTED",
+                    )
+                    db.add(citizen_report)
+                    db.commit()
+                    db.refresh(citizen_report)
+                    return {
+                        "message": "Precio reportado fuera de rango",
+                        "status": "REJECTED",
+                        "report_id": citizen_report.id,
+                    }
 
-    event.report_count += 1
-    if event.report_count >= 2 and event.status == "PENDING":
-        _activate_event_and_reprice(event, db)
-    else:
-        db.commit()
+    citizen_report = CitizenReport(
+        event_id=body.event_id,
+        region_id=body.region_id,
+        market_product_id=body.market_product_id,
+        reported_price=body.reported_price,
+        reported_unit=body.reported_unit,
+        market_place_reference=body.market_place_reference,
+        description=body.description,
+        latitude=body.latitude,
+        longitude=body.longitude,
+        status="VALIDATED" if body.reported_price else "PENDING",
+    )
+    db.add(citizen_report)
 
-    db.refresh(event)
-    return {"status": "accepted", "event_status": event.status, "report_count": event.report_count}
+    if event:
+        event.report_count += 1
+        if event.report_count >= 2 and event.status == "PENDING":
+            _activate_event_and_reprice(event, db)
+        else:
+            db.commit()
+        db.refresh(event)
+
+    db.commit()
+    db.refresh(citizen_report)
+
+    return {
+        "message": "Reporte recibido correctamente",
+        "status": citizen_report.status,
+        "report_id": citizen_report.id,
+        "event_status": event.status if event else None,
+        "report_count": event.report_count if event else None,
+    }
 
 
 # ==== Admin ====

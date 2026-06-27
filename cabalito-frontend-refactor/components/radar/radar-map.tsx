@@ -60,7 +60,7 @@ function createMarkerElement(p: RadarProduct, isSelected: boolean): HTMLDivEleme
   chip.className = "map-marker-chip";
   if (isSelected) chip.classList.add("map-marker-chip-visible");
   chip.innerHTML = `
-    <span class="map-marker-chip-name">${p.name}</span>
+    <span class="map-marker-chip-name">${p.product_name}</span>
     <span class="map-marker-chip-price">Bs ${parseFloat(p.current_price).toFixed(2)}</span>
   `;
   wrap.appendChild(chip);
@@ -94,7 +94,6 @@ export function RadarMap({ products, selectedId, onSelect }: Props) {
 
     map.on("load", () => {
       map.resize();
-      // Tinte sutil al mapa base con la paleta Cabalito
       try {
         if (map.getLayer("background")) {
           map.setPaintProperty("background", "background-color", "#0d1117");
@@ -129,7 +128,7 @@ export function RadarMap({ products, selectedId, onSelect }: Props) {
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !selectedId) return;
-    const p = products.find((x) => x.id === selectedId);
+    const p = products.find((x) => x.market_product_id === selectedId);
     if (p?.latitude == null || p?.longitude == null) return;
     map.flyTo({
       center: [p.longitude, p.latitude],
@@ -151,7 +150,7 @@ export function RadarMap({ products, selectedId, onSelect }: Props) {
     products
       .filter((p) => p.latitude != null && p.longitude != null)
       .forEach((p) => {
-        const isSelected = p.id === selectedId;
+        const isSelected = p.market_product_id === selectedId;
         const el = createMarkerElement(p, isSelected);
         el.addEventListener("click", (e) => {
           e.stopPropagation();

@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional, List
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 
@@ -73,12 +73,11 @@ class EventPage(BaseModel):
     items: List[EventOut]
 
 
-# ==== Product ====
+# ==== Product (catálogo general) ====
 class ProductBase(BaseModel):
     name: str
-    origin_region_id: int
-    current_price: Decimal
-    market_status: str = "GREEN"
+    unit: str = "kg"
+    category: Optional[str] = None
 
 class ProductCreate(ProductBase):
     pass
@@ -89,7 +88,6 @@ class ProductUpdate(ProductBase):
 class ProductOut(ProductBase):
     id: int
     status: str
-    origin_region: Optional[RegionOut] = None
     class Config:
         from_attributes = True
 
@@ -97,32 +95,88 @@ class ProductPage(BaseModel):
     total: int
     items: List[ProductOut]
 
-class RadarProduct(BaseModel):
-    id: int
-    name: str
+
+# ==== MarketProduct ====
+class MarketProductBase(BaseModel):
+    region_id: int
+    product_id: int
     current_price: Decimal
-    market_status: str
+    market_status: str = "GREEN"
+
+class MarketProductCreate(MarketProductBase):
+    pass
+
+class MarketProductUpdate(MarketProductBase):
+    pass
+
+class MarketProductOut(MarketProductBase):
+    id: int
+    status: str
+    last_updated: Optional[datetime] = None
+    region: Optional[RegionOut] = None
+    product: Optional[ProductOut] = None
+    class Config:
+        from_attributes = True
+
+class MarketProductPage(BaseModel):
+    total: int
+    items: List[MarketProductOut]
+
+
+# ==== Radar ====
+class RadarProduct(BaseModel):
+    market_product_id: int
+    product_id: int
+    product_name: str
+    unit: str
+    region_id: int
+    region_name: Optional[str]
     latitude: Optional[float]
     longitude: Optional[float]
-    region_name: Optional[str]
+    current_price: Decimal
+    market_status: str
+    status: str
+    last_updated: Optional[datetime] = None
 
 
 # ==== PriceHistory ====
 class PriceHistoryOut(BaseModel):
     id: int
+    market_product_id: int
     price: Decimal
     recorded_date: date
     event_id: Optional[int]
+    event_description: Optional[str] = None
     status: str
     class Config:
         from_attributes = True
 
 
-# ==== Reports ====
+# ==== Citizen Reports ====
 class ReportRequest(BaseModel):
-    event_id: int
+    event_id: Optional[int] = None
+    region_id: Optional[int] = None
+    market_product_id: Optional[int] = None
     reported_price: Optional[float] = None
-    product_id: Optional[int] = None
+    reported_unit: Optional[str] = None
+    market_place_reference: Optional[str] = None
+    description: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+
+class CitizenReportOut(BaseModel):
+    id: int
+    event_id: Optional[int]
+    region_id: Optional[int]
+    market_product_id: Optional[int]
+    reported_price: Optional[Decimal]
+    reported_unit: Optional[str]
+    market_place_reference: Optional[str]
+    description: Optional[str]
+    status: str
+    created_at: Optional[datetime]
+    class Config:
+        from_attributes = True
 
 class ForceTriggerRequest(BaseModel):
     event_id: int

@@ -1,6 +1,7 @@
 export type Status = "ACTIVE" | "INACTIVE" | string;
 export type MarketStatus = "GREEN" | "YELLOW" | "RED" | string;
 export type Severity = "LOW" | "MEDIUM" | "HIGH" | string;
+export type ReportStatus = "PENDING" | "VALIDATED" | "REJECTED" | string;
 
 export interface RegionOut {
   id: number;
@@ -35,14 +36,13 @@ export interface EventPage {
   items: EventOut[];
 }
 
+// Catálogo general de productos (sin precios)
 export interface ProductOut {
   id: number;
   name: string;
-  origin_region_id: number;
-  current_price: string;
-  market_status: MarketStatus;
+  unit: string;
+  category: string | null;
   status: Status;
-  origin_region: RegionOut | null;
 }
 
 export interface ProductPage {
@@ -50,22 +50,68 @@ export interface ProductPage {
   items: ProductOut[];
 }
 
-export interface RadarProduct {
+// Producto en un mercado específico
+export interface MarketProductOut {
   id: number;
-  name: string;
+  region_id: number;
+  product_id: number;
   current_price: string;
   market_status: MarketStatus;
+  status: Status;
+  last_updated: string | null;
+  region: RegionOut | null;
+  product: ProductOut | null;
+}
+
+export interface MarketProductPage {
+  total: number;
+  items: MarketProductOut[];
+}
+
+// Datos del radar (combinación market_product + product + region)
+export interface RadarProduct {
+  market_product_id: number;
+  product_id: number;
+  product_name: string;
+  unit: string;
+  region_id: number;
+  region_name: string | null;
   latitude: number | null;
   longitude: number | null;
-  region_name: string | null;
+  current_price: string;
+  market_status: MarketStatus;
+  status: Status;
+  last_updated: string | null;
 }
 
 export interface PriceHistoryOut {
   id: number;
+  market_product_id: number;
   price: string;
   recorded_date: string;
   event_id: number | null;
+  event_description: string | null;
   status: string;
+}
+
+export interface CitizenReportPayload {
+  event_id?: number | null;
+  region_id?: number | null;
+  market_product_id?: number | null;
+  reported_price?: number | null;
+  reported_unit?: string | null;
+  market_place_reference?: string | null;
+  description?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+}
+
+export interface CitizenReportResponse {
+  message: string;
+  status: ReportStatus;
+  report_id: number;
+  event_status?: string | null;
+  report_count?: number | null;
 }
 
 export interface ChatResponse {

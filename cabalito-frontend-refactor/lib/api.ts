@@ -1,8 +1,12 @@
 import type {
+  CitizenReportPayload,
+  CitizenReportResponse,
   EventOut,
   EventPage,
   EventTypeOut,
   LoginResponse,
+  MarketProductOut,
+  MarketProductPage,
   PriceHistoryOut,
   ProductOut,
   ProductPage,
@@ -46,9 +50,6 @@ async function request<T>(
 
   if (options.authed) {
     const token = getToken();
-    // Nota: el backend define el header como "authorization" (string libre).
-    // Si tu FastAPI espera el prefijo "Bearer ", cambia la linea de abajo a:
-    // headers.authorization = `Bearer ${token}`;
     if (token) headers.authorization = token;
   }
 
@@ -76,24 +77,26 @@ export const login = (username: string, password: string) =>
     body: JSON.stringify({ username, password }),
   });
 
-// ---- Public: radar / productos / chat / reportes ----
+// ---- Public: radar ----
 export const getRadar = () => request<RadarProduct[]>("/api/v1/products/radar");
 
-export const getProductHistory = (productId: number) =>
-  request<PriceHistoryOut[]>(`/api/v1/products/${productId}/history`);
+// ---- Public: historial por market_product_id ----
+export const getMarketProductHistory = (marketProductId: number) =>
+  request<PriceHistoryOut[]>(`/api/v1/market-products/${marketProductId}/history`);
 
-export const reportEvent = (payload: {
-  event_id: number;
-  reported_price?: number;
-  product_id?: number;
-}) =>
-  request<unknown>("/api/v1/events/report", {
+// ---- Public: reportes ciudadanos ----
+export const reportEvent = (payload: CitizenReportPayload) =>
+  request<CitizenReportResponse>("/api/v1/events/report", {
     method: "POST",
     body: JSON.stringify(payload),
   });
 
 export const getActiveEvents = () => request<EventOut[]>("/api/v1/events/active");
 
+// ---- Public: regiones (para modal de reportes) ----
+export const getPublicRegions = () => request<RegionOut[]>("/api/v1/regions");
+
+// ---- Public: chat ----
 export const askCasera = (productId: number, userMessage: string) =>
   request<ChatResponse>("/api/v1/chat/casera", {
     method: "POST",
@@ -182,7 +185,7 @@ export const createEventType = (name: string) =>
 export const patchEventTypeStatus = (id: number) =>
   request<EventTypeOut>(`/api/v1/admin/event-types/${id}/status`, { method: "PATCH", authed: true });
 
-// ---- Admin: productos ----
+// ---- Admin: productos (catálogo) ----
 export const listProducts = (params: { search?: string; status?: string; page?: number; size?: number }) => {
   const q = new URLSearchParams();
   if (params.search) q.set("search", params.search);
@@ -192,22 +195,14 @@ export const listProducts = (params: { search?: string; status?: string; page?: 
   return request<ProductPage>(`/api/v1/admin/products?${q.toString()}`, { authed: true });
 };
 
-export const createProduct = (payload: {
-  name: string;
-  origin_region_id: number;
-  current_price: number;
-  market_status?: string;
-}) =>
+export const createProduct = (payload: { name: string; unit?: string; category?: string }) =>
   request<ProductOut>("/api/v1/admin/products", {
     method: "POST",
     authed: true,
     body: JSON.stringify(payload),
   });
 
-export const updateProduct = (
-  id: number,
-  payload: { name: string; origin_region_id: number; current_price: number; market_status?: string }
-) =>
+export const updateProduct = (id: number, payload: { name: string; unit?: string; category?: string }) =>
   request<ProductOut>(`/api/v1/admin/products/${id}`, {
     method: "PUT",
     authed: true,
@@ -216,3 +211,46 @@ export const updateProduct = (
 
 export const patchProductStatus = (id: number) =>
   request<ProductOut>(`/api/v1/admin/products/${id}/status`, { method: "PATCH", authed: true });
+
+// ---- Admin: market products ----
+export const listMarketProducts = (params: {
+  region_id?: number;
+  status?: string;
+  page?: number;
+  size?: number;
+}) => {
+  const q = new URLSearchParams();
+  if (params.region_id) q.set("region_id", String(params.region_id));
+  if (params.status) q.set("status", params.status);
+  q.set("page", String(params.page ?? 1));
+  q.set("size", String(params.size ?? 50));
+  return request<MarketProductPage>(`/api/v1/admin/market-products?${q.toString()}`, { authed: true });
+};
+
+export const createMarketProduct = (payload: {
+  region_id: number;
+  product_id: number;
+  current_price: number;
+  market_status?: string;
+}) =>
+  request<MarketProductOut>("/api/v1/admin/market-products", {
+    method: "POST",
+    authed: true,
+    body: JSON.stringify(payload),
+  });
+
+export const updateMarketProduct = (
+  id: number,
+  payload: { region_id: number; product_id: number; current_price: number; market_status?: string }
+) =>
+  request<MarketProductOut>(`/api/v1/admin/market-products/${id}`, {
+    method: "PUT",
+    authed: true,
+    body: JSON.stringify(payload),
+  });
+
+export const patchMarketProductStatus = (id: number) =>
+  request<MarketProductOut>(`/api/v1/admin/market-products/${id}/status`, {
+    method: "PATCH",
+    authed: true,
+  });
