@@ -3,7 +3,18 @@
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  ActionLink,
+  DataTable,
+  DataTableCell,
+  DataTableEmpty,
+  DataTableHead,
+  DataTableRow,
+  DataTableToolbar,
+} from "@/components/ui/data-table";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
+import { StatusSwitch } from "@/components/ui/switch";
 import { Modal } from "@/components/ui/modal";
 import {
   createEvent,
@@ -13,7 +24,6 @@ import {
   listRegions,
   patchEventStatus,
 } from "@/lib/api";
-import { formatDate } from "@/lib/utils";
 import type { EventOut, EventTypeOut, RegionOut } from "@/lib/types";
 
 export default function EventosPage() {
@@ -67,54 +77,46 @@ export default function EventosPage() {
         </div>
       </div>
 
-      <Input
-        placeholder="Buscar evento..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="max-w-xs mb-4"
-      />
+      <DataTableToolbar>
+        <SearchInput
+          placeholder="Buscar evento..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full max-w-md"
+        />
+      </DataTableToolbar>
 
-      <div className="rounded-xl border border-ink/10 dark:border-paper/10 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-ink/[0.03] dark:bg-paper/[0.05] text-left text-ink/50 dark:text-paper/50">
-            <tr>
-              <th className="px-4 py-2.5 font-medium">region</th>
-              <th className="px-4 py-2.5 font-medium">tipo</th>
-              <th className="px-4 py-2.5 font-medium">severidad</th>
-              <th className="px-4 py-2.5 font-medium">reportes</th>
-              <th className="px-4 py-2.5 font-medium">estado</th>
-              <th className="px-4 py-2.5 font-medium"></th>
-            </tr>
-          </thead>
+      <DataTable>
+        <table className="w-full">
+          <DataTableHead
+            columns={[
+              { header: "region" },
+              { header: "tipo" },
+              { header: "severidad" },
+              { header: "reportes" },
+              { header: "estado" },
+              { header: "", className: "text-right" },
+            ]}
+          />
           <tbody>
             {items.map((e) => (
-              <tr key={e.id} className="border-t border-ink/10 dark:border-paper/10">
-                <td className="px-4 py-2.5">{e.region?.name ?? e.region_id}</td>
-                <td className="px-4 py-2.5">{e.event_type?.name ?? e.event_type_id}</td>
-                <td className="px-4 py-2.5 capitalize">{e.severity.toLowerCase()}</td>
-                <td className="px-4 py-2.5">{e.report_count}</td>
-                <td className="px-4 py-2.5">
-                  <button onClick={() => toggleStatus(e.id)}>
-                    <Badge status={e.status} />
-                  </button>
-                </td>
-                <td className="px-4 py-2.5 text-right">
-                  <button onClick={() => setViewing(e)} className="text-oro-600 hover:underline">
-                    ver
-                  </button>
-                </td>
-              </tr>
+              <DataTableRow key={e.id}>
+                <DataTableCell>{e.region?.name ?? e.region_id}</DataTableCell>
+                <DataTableCell>{e.event_type?.name ?? e.event_type_id}</DataTableCell>
+                <DataTableCell className="capitalize">{e.severity.toLowerCase()}</DataTableCell>
+                <DataTableCell>{e.report_count}</DataTableCell>
+                <DataTableCell>
+                  <StatusSwitch status={e.status} onToggle={() => toggleStatus(e.id)} />
+                </DataTableCell>
+                <DataTableCell className="text-right">
+                  <ActionLink onClick={() => setViewing(e)}>ver</ActionLink>
+                </DataTableCell>
+              </DataTableRow>
             ))}
-            {items.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-ink/40 dark:text-paper/40">
-                  no hay eventos todavia
-                </td>
-              </tr>
-            )}
+            {items.length === 0 && <DataTableEmpty colSpan={6} message="no hay eventos todavia" />}
           </tbody>
         </table>
-      </div>
+      </DataTable>
 
       <Modal open={!!viewing} onClose={() => setViewing(null)} title={`Evento #${viewing?.id ?? ""}`}>
         {viewing && (
@@ -223,7 +225,7 @@ function CreateEventModal({
       <Field label="Descripcion (opcional)">
         <Textarea value={description} onChange={(e) => setDescription(e.target.value)} />
       </Field>
-      {error && <p className="text-terracota-600 text-sm mb-3">{error}</p>}
+      {error && <p className="text-primary-600 text-sm mb-3">{error}</p>}
       <Button onClick={submit} className="w-full">
         Crear evento
       </Button>

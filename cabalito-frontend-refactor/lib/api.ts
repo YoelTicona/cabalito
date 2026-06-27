@@ -92,6 +92,8 @@ export const reportEvent = (payload: {
     body: JSON.stringify(payload),
   });
 
+export const getActiveEvents = () => request<EventOut[]>("/api/v1/events/active");
+
 export const askCasera = (productId: number, userMessage: string) =>
   request<ChatResponse>("/api/v1/chat/casera", {
     method: "POST",

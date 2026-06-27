@@ -9,9 +9,9 @@ const LA_PAZ_CENTER: [number, number] = [-68.1193, -16.5];
 const DARK_STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
 
 const COLORS: Record<string, string> = {
-  GREEN: "#82AC59",
-  YELLOW: "#E6B845",
-  RED: "#E07A50",
+  GREEN: "#059669",
+  YELLOW: "#F59E0B",
+  RED: "#D97706",
 };
 
 interface Props {
@@ -93,7 +93,7 @@ export function RadarMap({ products, selectedId, onSelect }: Props) {
         dot.style.inset = "0";
         dot.style.borderRadius = "50%";
         dot.style.background = color;
-        dot.style.border = isSelected ? "2px solid #F7F3EA" : "1.5px solid rgba(20,22,27,0.6)";
+        dot.style.border = isSelected ? "2px solid #F3F4F6" : "1.5px solid rgba(17,24,39,0.6)";
         el.appendChild(dot);
 
         el.addEventListener("click", () => onSelect(p));

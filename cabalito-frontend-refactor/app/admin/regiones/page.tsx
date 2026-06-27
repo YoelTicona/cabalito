@@ -1,9 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  ActionLink,
+  DataTable,
+  DataTableCell,
+  DataTableEmpty,
+  DataTableHead,
+  DataTableRow,
+  DataTableToolbar,
+} from "@/components/ui/data-table";
 import { Field, Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
+import { StatusSwitch } from "@/components/ui/switch";
 import { Modal } from "@/components/ui/modal";
 import { createRegion, listRegions, patchRegionStatus, updateRegion } from "@/lib/api";
 import type { RegionOut } from "@/lib/types";
@@ -34,54 +44,48 @@ export default function RegionesPage() {
         </Button>
       </div>
 
-      <Input
-        placeholder="Buscar region..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="max-w-xs mb-4"
-      />
+      <DataTableToolbar>
+        <SearchInput
+          placeholder="Buscar region..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full max-w-md"
+        />
+      </DataTableToolbar>
 
-      <div className="rounded-xl border border-ink/10 dark:border-paper/10 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-ink/[0.03] dark:bg-paper/[0.05] text-left text-ink/50 dark:text-paper/50">
-            <tr>
-              <th className="px-4 py-2.5 font-medium">nombre</th>
-              <th className="px-4 py-2.5 font-medium">ubicacion clima</th>
-              <th className="px-4 py-2.5 font-medium">coordenadas</th>
-              <th className="px-4 py-2.5 font-medium">estado</th>
-              <th className="px-4 py-2.5 font-medium"></th>
-            </tr>
-          </thead>
+      <DataTable>
+        <table className="w-full">
+          <DataTableHead
+            columns={[
+              { header: "nombre" },
+              { header: "ubicacion clima" },
+              { header: "coordenadas" },
+              { header: "estado" },
+              { header: "", className: "text-right" },
+            ]}
+          />
           <tbody>
             {items.map((r) => (
-              <tr key={r.id} className="border-t border-ink/10 dark:border-paper/10">
-                <td className="px-4 py-2.5">{r.name}</td>
-                <td className="px-4 py-2.5 text-ink/60 dark:text-paper/60">{r.weather_api_location ?? "-"}</td>
-                <td className="px-4 py-2.5 font-mono text-xs text-ink/60 dark:text-paper/60">
+              <DataTableRow key={r.id}>
+                <DataTableCell className="font-medium">{r.name}</DataTableCell>
+                <DataTableCell className="text-ink/60 dark:text-paper/60">
+                  {r.weather_api_location ?? "-"}
+                </DataTableCell>
+                <DataTableCell className="font-mono text-xs text-ink/60 dark:text-paper/60">
                   {r.latitude && r.longitude ? `${r.latitude.toFixed(3)}, ${r.longitude.toFixed(3)}` : "-"}
-                </td>
-                <td className="px-4 py-2.5">
-                  <button onClick={() => toggleStatus(r.id)}>
-                    <Badge status={r.status} />
-                  </button>
-                </td>
-                <td className="px-4 py-2.5 text-right">
-                  <button onClick={() => setEditing(r)} className="text-oro-600 hover:underline">
-                    editar
-                  </button>
-                </td>
-              </tr>
+                </DataTableCell>
+                <DataTableCell>
+                  <StatusSwitch status={r.status} onToggle={() => toggleStatus(r.id)} />
+                </DataTableCell>
+                <DataTableCell className="text-right">
+                  <ActionLink onClick={() => setEditing(r)}>editar</ActionLink>
+                </DataTableCell>
+              </DataTableRow>
             ))}
-            {items.length === 0 && (
-              <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-ink/40 dark:text-paper/40">
-                  no hay regiones todavia
-                </td>
-              </tr>
-            )}
+            {items.length === 0 && <DataTableEmpty colSpan={5} message="no hay regiones todavia" />}
           </tbody>
         </table>
-      </div>
+      </DataTable>
 
       <RegionForm
         open={creating}
@@ -156,7 +160,7 @@ function RegionForm({
           <Input value={lng} onChange={(e) => setLng(e.target.value)} type="number" placeholder="-68.119" />
         </Field>
       </div>
-      {error && <p className="text-terracota-600 text-sm mb-3">{error}</p>}
+      {error && <p className="text-primary-600 text-sm mb-3">{error}</p>}
       <Button onClick={submit} className="w-full">
         Guardar
       </Button>

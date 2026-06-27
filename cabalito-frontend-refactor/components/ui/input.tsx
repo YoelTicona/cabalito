@@ -2,7 +2,7 @@ import { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttri
 import { cn } from "@/lib/utils";
 
 const base =
-  "w-full h-10 rounded-lg border border-ink/15 dark:border-paper/15 bg-white dark:bg-ink/40 px-3 text-sm text-ink dark:text-paper placeholder:text-ink/40 dark:placeholder:text-paper/40 focus:border-oro-600 outline-none";
+  "w-full h-10 rounded-full border border-primary-100 dark:border-paper/15 bg-white dark:bg-ink/40 px-4 text-sm text-ink dark:text-paper placeholder:text-ink/40 dark:placeholder:text-paper/40 focus:border-primary-600 focus:ring-2 focus:ring-primary-600/20 outline-none transition-all";
 
 export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (

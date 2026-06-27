@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { useTheme } from "next-themes";
 import { clearToken, getToken } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -32,8 +33,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="min-h-screen flex bg-paper dark:bg-ink text-ink dark:text-paper">
       <aside className="w-56 shrink-0 border-r border-ink/10 dark:border-paper/10 flex flex-col p-4">
-        <Link href="/" className="font-display text-xl mb-8 px-2">
-          Cabalito
+        <Link href="/" className="flex items-center gap-2 mb-8 px-2">
+          <Image
+            src="/images/logo_cabalito_negro.png"
+            alt="Cabalito"
+            width={28}
+            height={28}
+            className="rounded-md dark:hidden"
+          />
+          <Image
+            src="/images/logo_cabalito_claro.png"
+            alt="Cabalito"
+            width={28}
+            height={28}
+            className="rounded-md hidden dark:block"
+          />
+          <span className="font-display text-xl">Cabalito</span>
         </Link>
         <nav className="flex-1 space-y-1">
           {NAV.map((item) => (
@@ -41,10 +56,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 px-3 h-10 rounded-lg text-sm transition-colors",
+                "flex items-center gap-3 px-3 h-10 rounded-full text-sm transition-all duration-200",
                 pathname === item.href
-                  ? "bg-terracota-600 text-white"
-                  : "text-ink/70 dark:text-paper/70 hover:bg-ink/5 dark:hover:bg-paper/10"
+                  ? "bg-primary-600 text-white shadow-sm"
+                  : "text-ink/70 dark:text-paper/70 hover:bg-primary-50 dark:hover:bg-paper/10"
               )}
             >
               <span className="w-4 text-center">{item.icon}</span>
@@ -57,7 +72,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             clearToken();
             router.push("/login");
           }}
-          className="text-sm text-ink/50 dark:text-paper/50 hover:text-terracota-600 px-3 h-10 flex items-center gap-3"
+          className="text-sm text-ink/50 dark:text-paper/50 hover:text-primary-600 px-3 h-10 flex items-center gap-3"
         >
           <span className="w-4 text-center">↩</span>
           Salir

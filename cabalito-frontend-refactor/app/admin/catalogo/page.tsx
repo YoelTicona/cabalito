@@ -3,7 +3,18 @@
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  ActionLink,
+  DataTable,
+  DataTableCell,
+  DataTableEmpty,
+  DataTableHead,
+  DataTableRow,
+  DataTableToolbar,
+} from "@/components/ui/data-table";
 import { Field, Input, Select } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
+import { StatusSwitch } from "@/components/ui/switch";
 import { Modal } from "@/components/ui/modal";
 import { cn, formatBs } from "@/lib/utils";
 import {
@@ -24,14 +35,16 @@ export default function CatalogoPage() {
   return (
     <div>
       <h1 className="font-display text-2xl mb-6">Catalogo</h1>
-      <div className="flex gap-1 mb-6 border-b border-ink/10 dark:border-paper/10">
+      <div className="inline-flex p-1 rounded-full bg-primary-50 dark:bg-paper/5 border border-primary-100 dark:border-paper/10 mb-6">
         {(["productos", "tipos"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={cn(
-              "px-4 py-2 text-sm font-medium border-b-2 -mb-px",
-              tab === t ? "border-terracota-600 text-terracota-600" : "border-transparent text-ink/50 dark:text-paper/50"
+              "px-5 py-2 text-sm font-medium rounded-full transition-all duration-200",
+              tab === t
+                ? "bg-primary-600 text-white shadow-sm"
+                : "text-ink/50 dark:text-paper/50 hover:text-ink dark:hover:text-paper"
             )}
           >
             {t === "productos" ? "Productos" : "Tipos de evento"}
@@ -66,56 +79,53 @@ function ProductsTab() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <Input placeholder="Buscar producto..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-xs" />
+      <DataTableToolbar>
+        <SearchInput
+          placeholder="Buscar producto..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full max-w-md"
+        />
         <Button size="sm" onClick={() => setCreating(true)}>
           + Nuevo producto
         </Button>
-      </div>
+      </DataTableToolbar>
 
-      <div className="rounded-xl border border-ink/10 dark:border-paper/10 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-ink/[0.03] dark:bg-paper/[0.05] text-left text-ink/50 dark:text-paper/50">
-            <tr>
-              <th className="px-4 py-2.5 font-medium">nombre</th>
-              <th className="px-4 py-2.5 font-medium">origen</th>
-              <th className="px-4 py-2.5 font-medium">precio</th>
-              <th className="px-4 py-2.5 font-medium">mercado</th>
-              <th className="px-4 py-2.5 font-medium">estado</th>
-              <th className="px-4 py-2.5 font-medium"></th>
-            </tr>
-          </thead>
+      <DataTable>
+        <table className="w-full">
+          <DataTableHead
+            columns={[
+              { header: "nombre" },
+              { header: "origen" },
+              { header: "precio" },
+              { header: "mercado" },
+              { header: "estado" },
+              { header: "", className: "text-right" },
+            ]}
+          />
           <tbody>
             {items.map((p) => (
-              <tr key={p.id} className="border-t border-ink/10 dark:border-paper/10">
-                <td className="px-4 py-2.5">{p.name}</td>
-                <td className="px-4 py-2.5 text-ink/60 dark:text-paper/60">{p.origin_region?.name ?? p.origin_region_id}</td>
-                <td className="px-4 py-2.5 font-mono">Bs {formatBs(p.current_price)}</td>
-                <td className="px-4 py-2.5">
+              <DataTableRow key={p.id}>
+                <DataTableCell className="font-medium">{p.name}</DataTableCell>
+                <DataTableCell className="text-ink/60 dark:text-paper/60">
+                  {p.origin_region?.name ?? p.origin_region_id}
+                </DataTableCell>
+                <DataTableCell className="font-mono">Bs {formatBs(p.current_price)}</DataTableCell>
+                <DataTableCell>
                   <Badge status={p.market_status} />
-                </td>
-                <td className="px-4 py-2.5">
-                  <button onClick={() => toggleStatus(p.id)}>
-                    <Badge status={p.status} />
-                  </button>
-                </td>
-                <td className="px-4 py-2.5 text-right">
-                  <button onClick={() => setEditing(p)} className="text-oro-600 hover:underline">
-                    editar
-                  </button>
-                </td>
-              </tr>
+                </DataTableCell>
+                <DataTableCell>
+                  <StatusSwitch status={p.status} onToggle={() => toggleStatus(p.id)} />
+                </DataTableCell>
+                <DataTableCell className="text-right">
+                  <ActionLink onClick={() => setEditing(p)}>editar</ActionLink>
+                </DataTableCell>
+              </DataTableRow>
             ))}
-            {items.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-ink/40 dark:text-paper/40">
-                  no hay productos todavia
-                </td>
-              </tr>
-            )}
+            {items.length === 0 && <DataTableEmpty colSpan={6} message="no hay productos todavia" />}
           </tbody>
         </table>
-      </div>
+      </DataTable>
 
       <ProductForm open={creating} onClose={() => setCreating(false)} onSaved={refresh} regions={regions} create={createProduct} />
       {editing && (
@@ -192,7 +202,7 @@ function ProductForm({
           <option value="RED">crisis</option>
         </Select>
       </Field>
-      {error && <p className="text-terracota-600 text-sm mb-3">{error}</p>}
+      {error && <p className="text-primary-600 text-sm mb-3">{error}</p>}
       <Button onClick={submit} className="w-full">
         Guardar
       </Button>
@@ -230,50 +240,44 @@ function EventTypesTab() {
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-4">
-        <Input placeholder="Buscar tipo..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-xs" />
-        <Input
-          placeholder="Nuevo tipo, ej. Bloqueo"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && add()}
-          className="max-w-xs"
+      <DataTableToolbar>
+        <SearchInput
+          placeholder="Buscar tipo..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full max-w-xs"
         />
-        <Button size="sm" onClick={add}>
-          + Agregar
-        </Button>
-      </div>
-      {error && <p className="text-terracota-600 text-sm mb-3">{error}</p>}
+        <div className="flex items-center gap-2 flex-1 justify-end">
+          <Input
+            placeholder="Nuevo tipo, ej. Bloqueo"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && add()}
+            className="max-w-xs"
+          />
+          <Button size="sm" onClick={add}>
+            + Agregar
+          </Button>
+        </div>
+      </DataTableToolbar>
+      {error && <p className="text-primary-600 text-sm mb-3">{error}</p>}
 
-      <div className="rounded-xl border border-ink/10 dark:border-paper/10 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-ink/[0.03] dark:bg-paper/[0.05] text-left text-ink/50 dark:text-paper/50">
-            <tr>
-              <th className="px-4 py-2.5 font-medium">nombre</th>
-              <th className="px-4 py-2.5 font-medium">estado</th>
-            </tr>
-          </thead>
+      <DataTable>
+        <table className="w-full">
+          <DataTableHead columns={[{ header: "nombre" }, { header: "estado" }]} />
           <tbody>
             {items.map((t) => (
-              <tr key={t.id} className="border-t border-ink/10 dark:border-paper/10">
-                <td className="px-4 py-2.5">{t.name}</td>
-                <td className="px-4 py-2.5">
-                  <button onClick={() => toggleStatus(t.id)}>
-                    <Badge status={t.status} />
-                  </button>
-                </td>
-              </tr>
+              <DataTableRow key={t.id}>
+                <DataTableCell className="font-medium">{t.name}</DataTableCell>
+                <DataTableCell>
+                  <StatusSwitch status={t.status} onToggle={() => toggleStatus(t.id)} />
+                </DataTableCell>
+              </DataTableRow>
             ))}
-            {items.length === 0 && (
-              <tr>
-                <td colSpan={2} className="px-4 py-8 text-center text-ink/40 dark:text-paper/40">
-                  no hay tipos de evento todavia
-                </td>
-              </tr>
-            )}
+            {items.length === 0 && <DataTableEmpty colSpan={2} message="no hay tipos de evento todavia" />}
           </tbody>
         </table>
-      </div>
+      </DataTable>
     </div>
   );
 }
